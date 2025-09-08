@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Fps test by vinlat</title>
+  <title>FPS Test</title>
   <style>
     html,body{
       margin:0; padding:0; height:100%; width:100%; overflow:hidden; background:#000;
@@ -17,15 +17,58 @@
       color:yellow; background:rgba(0,0,0,0.4); padding:2px 6px; border-radius:4px;
       user-select:none; pointer-events:none;
     }
+    #testButton{
+      position:fixed; bottom:15px; left:50%; transform:translateX(-50%);
+      font-family:monospace; font-size:14px; font-weight:bold;
+      color:#fff; background:#222; padding:8px 16px; border-radius:6px;
+      border:2px solid #fff; cursor:pointer;
+      transition:all 0.2s;
+    }
+    #testButton:active{
+      transform:translateX(-50%) scale(0.95);
+      background:#444;
+    }
+    #resultBox{
+      position:fixed; top:50%; left:50%; transform:translate(-50%,-50%);
+      font-family:monospace; font-size:20px; font-weight:bold;
+      color:#0f0; background:rgba(0,0,0,0.7); padding:20px; border-radius:8px;
+      display:none; text-align:center;
+    }
+    #countdown{
+      position:fixed; top:10px; right:10px;
+      font-family:monospace; font-size:16px; font-weight:bold;
+      color:#0ff; background:rgba(0,0,0,0.4); padding:2px 6px; border-radius:4px;
+      display:none;
+    }
+    #intro{
+      position:fixed; top:50%; left:50%; transform:translate(-50%,-50%);
+      font-family:monospace; font-size:18px; font-weight:bold;
+      color:#fff; background:rgba(0,0,0,0.5); padding:15px 25px; border-radius:8px;
+      user-select:none;
+      animation: fadeout 3s forwards;
+    }
+    @keyframes fadeout{
+      0%{opacity:1;}
+      70%{opacity:1;}
+      100%{opacity:0; display:none;}
+    }
   </style>
 </head>
 <body>
   <canvas id="canvas"></canvas>
   <div id="fpsCounter">FPS:000</div>
+  <div id="countdown"></div>
+  <div id="resultBox"></div>
+  <div id="testButton">TEST</div>
+  <div id="intro">Swipe to test FPS</div>
+
   <script>
     const canvas=document.getElementById('canvas');
     const ctx=canvas.getContext('2d');
     const fpsEl=document.getElementById('fpsCounter');
+    const testButton=document.getElementById('testButton');
+    const resultBox=document.getElementById('resultBox');
+    const countdownEl=document.getElementById('countdown');
 
     function resize(){
       canvas.width=window.innerWidth;
@@ -36,6 +79,8 @@
 
     let words=["0","1","2","3","4","5","6","7","8","9","peace","relax","calm","focus","flow","void","infinity"];
     let particles=[];
+    let stressMode=false, stressEnd=0;
+    let fpsSum=0, fpsFrames=0;
 
     class Particle{
       constructor(x,y,angle){
@@ -43,7 +88,7 @@
         this.text=words[Math.floor(Math.random()*words.length)];
         this.size=Math.random()*20+12;
         this.life=80+Math.random()*40;
-        const speed=Math.random()*2+1.5;
+        const speed=Math.random()*3+1;
         this.vx=Math.cos(angle)*speed;
         this.vy=Math.sin(angle)*speed;
         this.gradient=Math.random()<0.3;
@@ -75,6 +120,35 @@
       const fps=Math.round(1000/delta);
       fpsEl.textContent="FPS:"+String(fps).padStart(3,"0");
 
+      if(stressMode){
+        fpsSum+=fps;
+        fpsFrames++;
+
+        // spam particles for stress test
+        for(let i=0;i<80;i++){
+          const angle=Math.random()*Math.PI*2;
+          particles.push(new Particle(Math.random()*canvas.width,Math.random()*canvas.height,angle));
+        }
+
+        if(now>=stressEnd){
+          stressMode=false;
+          let avg=Math.round(fpsSum/fpsFrames);
+          resultBox.innerHTML="Stress Test Done<br>Average FPS: "+avg;
+          resultBox.style.display="block";
+          countdownEl.style.display="none";
+          testButton.style.display="block";
+          particles=[]; // clear everything after test ends
+
+          // auto-hide result after 5s
+          setTimeout(()=>{
+            resultBox.style.display="none";
+          },5000);
+        } else {
+          let secs=Math.ceil((stressEnd-now)/1000);
+          countdownEl.textContent="Time Left: "+secs+"s";
+        }
+      }
+
       ctx.fillStyle="rgba(0,0,0,0.2)";
       ctx.fillRect(0,0,canvas.width,canvas.height);
 
@@ -97,12 +171,23 @@
       }
     }
 
+    // swipe movement spawns particles
     canvas.addEventListener('mousemove',e=>{ripple(e.clientX,e.clientY)});
     canvas.addEventListener('touchmove',e=>{
       for(let t of e.touches){
         ripple(t.clientX,t.clientY);
       }
     });
+
+    // stress test button
+    testButton.addEventListener('click',()=>{
+      stressMode=true;
+      stressEnd=performance.now()+30000; // 30s
+      fpsSum=0; fpsFrames=0;
+      resultBox.style.display="none";
+      countdownEl.style.display="block";
+      testButton.style.display="none";
+    });
   </script>
 </body>
-  </html>
+</html>
